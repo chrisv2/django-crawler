@@ -2,6 +2,7 @@ from collections import defaultdict
 from optparse import make_option
 import logging
 import sys
+import re
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -34,7 +35,9 @@ class Command(BaseCommand):
         make_option('--no-parent', action='store_true', dest="no_parent", default=False,
             help='Do not crawl URLs which do not start with your base URL'),
         make_option('-a', "--auth", action='store', dest='auth', default=None,
-            help='Authenticate (login:user,password:secret) before crawl')
+            help='Authenticate (login:user,password:secret) before crawl'),
+        make_option('-e', '--exclude', action='store', dest='exclude', default=[],
+            help='Exclude urls which match pattern. Example: -e ^/admin,^/static')
     )
 
     help = "Displays all of the url matching routes for the project."
@@ -45,6 +48,8 @@ class Command(BaseCommand):
         depth = int(options.get('depth', 3))
 
         auth = _parse_auth(options.get('auth'))
+        
+        exclude = _parse_exclude(options.get('exclude'))
 
         if verbosity == 3:
             log_level = 1
@@ -101,6 +106,7 @@ class Command(BaseCommand):
             output_dir=options.get("output_dir"),
             ascend=not options.get("no_parent"),
             auth=auth,
+            exclude=exclude
         )
 
         # Load plugins:
@@ -151,3 +157,11 @@ def _parse_auth(auth):
         return None
     items = auth.split(',')
     return dict(i.strip().split(':', 1) for i in items)
+
+def _parse_exclude(exclude):
+    """
+    Parse exclude and return list
+    """
+    if not exclude:
+        return []
+    return [re.compile(pat) for pat in exclude.split(',')]

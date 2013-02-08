@@ -58,7 +58,8 @@ class Crawler(object):
         self.conf_urls = conf_urls
         self.verbosity = verbosity
         self.ascend = ascend
-
+        self.exclude = kwargs.get('exclude') or []
+        
         auth = kwargs.get('auth')
 
         if output_dir:
@@ -198,8 +199,15 @@ class Crawler(object):
                 if not self.ascend and not base_url.startswith(self.base_url):
                     LOG.log(SUPER_DEBUG, "Skipping %s - outside scope of %s", base_url, self.base_url)
                     continue
-
-                if base_url not in [to for dep,fro,to in self.not_crawled] and not self.crawled.has_key(base_url):
+                
+                skip = False
+                for rule in self.exclude:
+                    if rule.search(base_url):
+                        LOG.info("Skipping excluded url %s" % base_url)
+                        skip = True
+                        break
+                    
+                if not skip and base_url not in [to for dep,fro,to in self.not_crawled] and not self.crawled.has_key(base_url):
                     self.not_crawled.append((current_depth+1, to_url, base_url))
 
         test_signals.finish_run.send(self)
